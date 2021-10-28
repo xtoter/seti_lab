@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net"
 	"os/exec"
+	"time"
 
 	"github.com/sparrc/go-ping"
 )
@@ -27,21 +28,22 @@ func getping(conn net.Conn) {
 	}
 
 	pinger.OnFinish = func(stats *ping.Statistics) {
-		out := fmt.Sprintf("\n--- %s ping statistics ---\n", stats.Addr)
+		out := fmt.Sprintf("--- %s ping statistics ---", stats.Addr)
 		conn.Write([]byte(out))
-		out = fmt.Sprintf("%d packets transmitted, %d packets received, %v%% packet loss\n",
+		out = fmt.Sprintf("%d packets transmitted, %d packets received, %v%% packet loss",
 			stats.PacketsSent, stats.PacketsRecv, stats.PacketLoss)
 		conn.Write([]byte(out))
 
-		out = fmt.Sprintf("round-trip min/avg/max/stddev = %v/%v/%v/%v\n",
+		out = fmt.Sprintf("round-trip min/avg/max/stddev = %v/%v/%v/%v",
 			stats.MinRtt, stats.AvgRtt, stats.MaxRtt, stats.StdDevRtt)
 		conn.Write([]byte(out))
 
 	}
-	out := fmt.Sprintf("PING %s (%s):\n", pinger.Addr(), pinger.IPAddr())
+	out := fmt.Sprintf("PING %s (%s):", pinger.Addr(), pinger.IPAddr())
 	conn.Write([]byte(out))
 
 	pinger.Run()
+	//conn.Write([]byte("\n"))
 
 }
 func gettrace(conn net.Conn) {
@@ -50,8 +52,17 @@ func gettrace(conn net.Conn) {
 	if err != nil {
 		panic(err)
 	}
-	conn.Write([]byte(string(dateOut) + "/n"))
-	fmt.Println(string(dateOut))
+	start := 0
+	for i := 0; i < len(dateOut); i++ {
+		if dateOut[i] == byte(10) {
+			fmt.Println(string(dateOut[start:i]))
+			conn.Write([]byte(string(dateOut[start:i]) + "\n"))
+			start = i + 1
+			time.Sleep(100 * time.Millisecond)
+		}
+	}
+
+	//fmt.Println(string(dateOut))
 }
 func client(conn net.Conn) {
 	for {
@@ -70,11 +81,11 @@ func client(conn net.Conn) {
 		fmt.Print([]byte(message))
 		switch mode {
 
-		case "ping":
-			getping(conn)
+		case "ping" + string(byte(10)):
+			go getping(conn)
 		case "trace" + string(byte(10)):
 			fmt.Println("d")
-			gettrace(conn)
+			go gettrace(conn)
 		}
 
 	}
