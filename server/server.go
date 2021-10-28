@@ -5,14 +5,15 @@ import (
 	"fmt"
 	"net"
 	"os/exec"
+	"strconv"
 	"time"
 
 	"github.com/sparrc/go-ping"
 )
 
-func getping(conn net.Conn) {
-	pinger, err := ping.NewPinger("ya.ru")
-	//pinger.Count = count
+func getping(conn net.Conn, host string, count int) {
+	pinger, err := ping.NewPinger(host)
+	pinger.Count = count
 	if err != nil {
 		conn.Write([]byte("Error: " + err.Error()))
 		//fmt.Printf("ERROR: %s\n", err.Error())
@@ -28,26 +29,30 @@ func getping(conn net.Conn) {
 	}
 
 	pinger.OnFinish = func(stats *ping.Statistics) {
-		out := fmt.Sprintf("--- %s ping statistics ---", stats.Addr)
+		out := fmt.Sprintf("\n--- %s ping statistics ---\n", stats.Addr)
 		conn.Write([]byte(out))
-		out = fmt.Sprintf("%d packets transmitted, %d packets received, %v%% packet loss",
+		time.Sleep(100 * time.Millisecond)
+		out = fmt.Sprintf("%d packets transmitted, %d packets received, %v%% packet loss\n",
 			stats.PacketsSent, stats.PacketsRecv, stats.PacketLoss)
 		conn.Write([]byte(out))
+		time.Sleep(100 * time.Millisecond)
 
-		out = fmt.Sprintf("round-trip min/avg/max/stddev = %v/%v/%v/%v",
+		out = fmt.Sprintf("round-trip min/avg/max/stddev = %v/%v/%v/%v\n",
 			stats.MinRtt, stats.AvgRtt, stats.MaxRtt, stats.StdDevRtt)
 		conn.Write([]byte(out))
+		time.Sleep(100 * time.Millisecond)
 
 	}
-	out := fmt.Sprintf("PING %s (%s):", pinger.Addr(), pinger.IPAddr())
+	out := fmt.Sprintf("PING %s (%s):\n", pinger.Addr(), pinger.IPAddr())
 	conn.Write([]byte(out))
+	time.Sleep(100 * time.Millisecond)
 
 	pinger.Run()
 	//conn.Write([]byte("\n"))
 
 }
-func gettrace(conn net.Conn) {
-	dateCmd := exec.Command("traceroute", "ya.ru")
+func gettrace(conn net.Conn, host string) {
+	dateCmd := exec.Command("traceroute", host)
 	dateOut, err := dateCmd.Output()
 	if err != nil {
 		panic(err)
@@ -55,7 +60,7 @@ func gettrace(conn net.Conn) {
 	start := 0
 	for i := 0; i < len(dateOut); i++ {
 		if dateOut[i] == byte(10) {
-			fmt.Println(string(dateOut[start:i]))
+			//fmt.Println(string(dateOut[start:i]))
 			conn.Write([]byte(string(dateOut[start:i]) + "\n"))
 			start = i + 1
 			time.Sleep(100 * time.Millisecond)
@@ -64,15 +69,24 @@ func gettrace(conn net.Conn) {
 
 	//fmt.Println(string(dateOut))
 }
-func decode(str string) (mode, host string) {
-	num := len(str) - 1
+func decode(str string) (mode, host string, count int) {
+	var num []int
+	num = append(num, len(str)-1)
+	num = append(num, len(str)-1)
+	j := 0
 	for i := 0; i < len(str); i++ {
 		if str[i] == byte(44) {
-			num = i
+			num[j] = i
+			j++
 		}
 
 	}
-	return str[0:num], str[(num + 1):]
+	count = 0
+	if num[1] != len(str)-1 {
+		count, _ = strconv.Atoi(str[(num[1] + 1) : len(str)-1])
+	}
+
+	return str[0:num[0]], str[(num[0] + 1):num[1]], count
 }
 func client(conn net.Conn) {
 	for {
@@ -83,27 +97,24 @@ func client(conn net.Conn) {
 			return
 		}
 		// Распечатываем полученое сообщение
-		fmt.Print("Message Received:", string(message))
+		fmt.Print(string(message))
 		// Процесс выборки для полученной строки
 		// Отправить новую строку обратно клиенту
 
-		mode, host := decode(message)
-		host = host
+		mode, host, count := decode(message)
 		switch mode {
 
 		case "ping":
-			go getping(conn)
+			go getping(conn, host, count)
 		case "trace":
-			go gettrace(conn)
+			go gettrace(conn, host)
 		}
 
 	}
 }
 func main() {
 	fmt.Println("Launching server...")
-	// Устанавливаем прослушивание порта
 	ln, _ := net.Listen("tcp", ":8081")
-	// Открываем порт
 	for {
 		conn, err := ln.Accept()
 		if err == nil {
