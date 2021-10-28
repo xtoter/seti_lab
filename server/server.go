@@ -64,6 +64,16 @@ func gettrace(conn net.Conn) {
 
 	//fmt.Println(string(dateOut))
 }
+func decode(str string) (mode, host string) {
+	num := len(str) - 1
+	for i := 0; i < len(str); i++ {
+		if str[i] == byte(44) {
+			num = i
+		}
+
+	}
+	return str[0:num], str[(num + 1):]
+}
 func client(conn net.Conn) {
 	for {
 		// Будем прослушивать все сообщения разделенные \n
@@ -77,14 +87,13 @@ func client(conn net.Conn) {
 		// Процесс выборки для полученной строки
 		// Отправить новую строку обратно клиенту
 
-		mode := message
-		fmt.Print([]byte(message))
+		mode, host := decode(message)
+		host = host
 		switch mode {
 
-		case "ping" + string(byte(10)):
+		case "ping":
 			go getping(conn)
-		case "trace" + string(byte(10)):
-			fmt.Println("d")
+		case "trace":
 			go gettrace(conn)
 		}
 
