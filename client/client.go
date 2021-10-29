@@ -16,7 +16,7 @@ func read(conn net.Conn) {
 	}
 
 }
-func main() {
+func main2() {
 
 	// Подключаемся к сокету
 	conn, _ := net.Dial("tcp", "127.0.0.1:8081")
@@ -29,4 +29,23 @@ func main() {
 		fmt.Fprintf(conn, text+"\n")
 		// Прослушиваем ответ
 	}
+}
+func main() {
+	ln, _ := net.Listen("tcp", ":8081")
+	conn, err := ln.Accept()
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+	for {
+		message, err1 := bufio.NewReader(conn).ReadString('\n')
+		if err1 != nil {
+			fmt.Println(err1)
+			return
+		}
+		conn.Write([]byte(string("axaxax") + "\n"))
+		// Распечатываем полученое сообщение
+		fmt.Print(string(message))
+	}
+
 }
