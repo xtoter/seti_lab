@@ -114,6 +114,7 @@ func client(conn net.Conn) {
 }
 func main() {
 	fmt.Println("Launching server...")
+
 	ln, _ := net.Listen("tcp", ":8081")
 	for {
 		conn, err := ln.Accept()

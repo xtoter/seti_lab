@@ -4,7 +4,10 @@ import (
 	"bufio"
 	"fmt"
 	"net"
+	"net/http"
 	"os"
+
+	"golang.org/x/net/websocket"
 )
 
 func read(conn net.Conn) {
@@ -31,21 +34,13 @@ func main2() {
 	}
 }
 func main() {
-	ln, _ := net.Listen("tcp", ":8081")
-	conn, err := ln.Accept()
-	if err != nil {
-		fmt.Println(err)
-		return
-	}
-	for {
-		message, err1 := bufio.NewReader(conn).ReadString('\n')
-		if err1 != nil {
-			fmt.Println(err1)
-			return
-		}
-		conn.Write([]byte(string("axaxax") + "\n"))
-		// Распечатываем полученое сообщение
-		fmt.Print(string(message))
-	}
+	http.Handle("/", websocket.Handler(handler))
+	http.ListenAndServe("localhost:3000", nil)
+}
 
+func handler(c *websocket.Conn) {
+	var s string
+	fmt.Fscan(c, &s)
+	fmt.Println("Received:", s)
+	fmt.Fprint(c, "How do you do?")
 }
